@@ -37,7 +37,6 @@ jobs:
           name: Upload
           command: |
             JAR=telemetry-spark-packages-assembly.jar
-            REPO="$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
             LOCAL="target/scala-2.11/$JAR"
             KEY="$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/$CIRCLE_TAG/$JAR"
             aws s3 cp "$LOCAL" "s3://$ARTIFACTS_BUCKET/$KEY"

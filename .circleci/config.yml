@@ -1,0 +1,61 @@
+####################
+# CircleCI configuration reference:
+#   https://circleci.com/docs/2.0/configuration-reference
+####################
+# CircleCI built-in environment variables:
+#   https://circleci.com/docs/2.0/env-vars/#built-in-environment-variables
+####################
+
+version: 2
+jobs:
+  assembly:
+    docker:
+      - image: mozilla/sbt:8u171_1.1.6
+    steps:
+      - checkout
+      - run:
+          name: Assembly
+          command: |
+            sbt assembly
+      - persist_to_workspace:
+          root: target/
+          paths:
+            - scala-2.11/telemetry-spark-packages-assembly.jar
+
+  # This publish job only runs for builds triggered by a git tag; see workflows section below.
+  publish:
+    docker:
+      - image: python:3.6
+    steps:
+      - attach_workspace:
+          at: target/
+      - run:
+          name: Install awscli
+          command: |
+            pip install awscli
+      - run:
+          name: Upload
+          command: |
+            JAR=telemetry-spark-packages-assembly.jar
+            REPO="$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+            LOCAL="target/scala-2.11/$JAR"
+            KEY="$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/$CIRCLE_TAG/$JAR"
+            aws s3 cp "$LOCAL" "s3://$ARTIFACTS_BUCKET/$KEY"
+
+workflows:
+  version: 2
+  assembly-publish:
+    jobs:
+      - assembly:
+          filters:
+            tags:
+              only: /^.*/  # Runs for all branches and tags
+      # Publish only runs on builds triggered by a new git tag of form vX.X.X
+      - publish:
+          requires:
+            - assembly
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
